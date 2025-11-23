@@ -1,0 +1,48 @@
+@startuml
+title Saga (choreography) — ошибка платежа
+
+participant Mobile
+participant API
+participant OrderService
+participant Kafka
+participant InventoryService as Inventory
+participant PaymentService as Payment
+participant NotificationService as Notification
+
+== Сценарий C: резерв успешен, но оплата не прошла==
+Mobile -> API : Checkout(payload)
+API -> OrderService : CreateOrder(payload)
+OrderService -> Kafka : OrderCreated
+
+Kafka -> Inventory : OrderCreated
+Inventory -> Kafka : InventoryReserved { order_id, reservation_id }
+
+Kafka -> OrderService : InventoryReserved
+OrderService -> Kafka : PaymentInitiated { order_id, amount }
+
+Kafka -> Payment : PaymentInitiated
+
+alt immediate payment failed
+  Payment -> Kafka : PaymentFailed { order_id, reason }
+  Kafka -> OrderService : PaymentFailed
+else payment timeout
+  Kafka -> OrderService : PaymentTimeout { order_id }
+end
+
+OrderService -> Kafka : OrderCancelled { order_id, reason: "PaymentFailed/Timeout" }
+
+OrderService -> Kafka : InventoryReleasedRequested { order_id, reservation_id }
+Kafka -> Inventory : InventoryReleasedRequested
+Inventory -> Inventory : release reservation
+Inventory -> Kafka : InventoryReleased { order_id, reservation_id }
+
+
+Kafka -> Notification : OrderCancelled
+Notification -> Kafka : NotificationSent { order_id, channel }
+
+Mobile -> API : GetOrderStatus(order_id)
+API -> OrderService : QueryOrder(order_id)
+OrderService -> API : OrderStatus (CANCELLED)
+API -> Mobile : OrderStatus
+
+@enduml
