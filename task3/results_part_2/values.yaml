@@ -1,0 +1,39 @@
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+grafana:
+  enabled: true
+
+prometheusAdapter:
+  enabled: true
+
+  prometheus:
+    url: http://prometheus-prom-kube-prometheus-stack-prometheus.monitoring.svc
+    port: 9090
+
+  rules:
+    default: false
+    custom:
+      - seriesQuery: 'job:scaletestapp_requests_per_second:rate1m'
+        name:
+          matches: "job:scaletestapp_requests_per_second:rate1m"
+          as: "scaletestapp_requests_per_second"
+        resources:
+          overrides:
+            namespace:
+              resource: namespace
+            pod:
+              resource: pod
+        metricsQuery: "job:scaletestapp_requests_per_second:rate1m{<<.LabelMatchers>>}"
