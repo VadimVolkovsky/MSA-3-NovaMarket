@@ -1,0 +1,19 @@
+| Этап                                     | Тип события     | Название                          |
+|------------------------------------------|-----------------|-----------------------------------|
+| Создание чернового заказа                | domain          | **OrderCreated**                  |
+| Запрос резервирования запасов            | domain          | **InventoryReservationRequested** |
+| Резерв успешно выполнен                  | domain          | **InventoryReserved**             |
+| Резерв не выполнен (недостаток товара)   | failure         | **InventoryReservationFailed**    |
+| Инициирована оплата                      | domain          | **PaymentInitiated**              |
+| Платёж прошёл успешно                    | domain          | **PaymentSucceeded**              |
+| Платёж отклонён                          | failure         | **PaymentFailed**                 |
+| Платёж не подтверждён в отведённое время | timeout/control | **PaymentTimeout**                |
+| Заказ отменён                            | domain          | **OrderCancelled**                |
+| Заказ подтверждён (оплата + резерв)      | domain          | **OrderConfirmed**                |
+| Компенсация: освобождение резерва        | compensation    | **InventoryReleased**             |
+| Компенсация: возврат денег               | compensation    | **RefundProcessed**               |
+| Создана доставка / заявка в логистике    | domain          | **ShipmentCreated**               |
+| Статус доставки обновлён                 | domain          | **ShipmentStatusUpdated**         |
+| Заказ доставлен                          | domain          | **ShipmentDelivered**             |
+| Уведомление отправлено                   | domain          | **NotificationSent**              |
+| Ошибка отправки уведомления              | failure         | **NotificationFailed**            |

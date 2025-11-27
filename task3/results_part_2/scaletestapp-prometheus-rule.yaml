@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scaletestapp-rules
+  namespace: monitoring
+  labels:
+    release: prom     # <<< ВАЖНО! Именно так!
+spec:
+  groups:
+    - name: scaletestapp.rules
+      rules:
+        - record: job:scaletestapp_requests_per_second:rate1m
+          expr: sum(rate(http_requests_total[1m]))
+          labels:
+            job: scaletestapp

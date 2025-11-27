@@ -1,0 +1,46 @@
+@startuml
+title Saga (choreography) — успешный сценарий
+
+participant Mobile
+participant API
+participant OrderService
+participant Kafka
+participant InventoryService as Inventory
+participant PaymentService as Payment
+participant ShippingService as Shipping
+participant NotificationService as Notification
+
+== Сценарий A: успешное оформление заказа ==
+Mobile -> API : Checkout(payload)
+API -> OrderService : CreateOrder(payload)
+OrderService -> Kafka : OrderCreated
+
+Kafka -> Inventory : OrderCreated
+Inventory -> Inventory : check stock & reserve
+Inventory -> Kafka : InventoryReserved { order_id, reservation_id }
+
+Kafka -> OrderService : InventoryReserved
+OrderService -> Kafka : PaymentInitiated { order_id, amount }
+
+Kafka -> Payment : PaymentInitiated
+Payment -> Payment : external payment service
+Payment -> Kafka : PaymentSucceeded { order_id, transaction_id }
+
+Kafka -> OrderService : PaymentSucceeded
+OrderService -> Kafka : OrderConfirmed { order_id }
+
+Kafka -> Shipping : ShipmentRequested { order_id }
+Shipping -> Shipping : create tracking / logistics request
+Shipping -> Kafka : ShipmentCreated { order_id, tracking_id }
+
+Kafka -> Notification : OrderConfirmed / ShipmentCreated
+Notification -> Kafka : NotificationSent { order_id }
+
+Mobile -> API : GetOrderStatus(order_id)
+API -> OrderService : QueryOrder(order_id)
+OrderService -> API : OrderStatus (CONFIRMED + SHIPPING)
+API -> Mobile : OrderStatus
+
+note right: Заказ оформлен, оплачен и передан в доставку.
+
+@enduml

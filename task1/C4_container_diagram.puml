@@ -1,0 +1,113 @@
+@startuml
+!include C4_Container.puml
+
+Person(mobile, "Mobile App", "Покупатель использует мобильное приложение")
+
+Container_Boundary(nm, "NovaMarket Platform") {
+    Container(api, "NGINX API Gateway", "Nginx / Ingress", "Маршрутизация запросов, TLS termination, rate limiting")
+}
+
+Container(kafka, "Event Broker", "Kafka Cluster", "Event-driven взаимодействие между всеми сервисами")
+
+' ================= AUTH DOMAIN =================
+Container_Boundary(auth_boundary, "Auth Domain") {
+    Container(auth, "Auth Service", "Python + Postgres", "Регистрация, аутентификация, управление методами оплаты")
+    ContainerDb(authDB, "Auth DB", "PostgreSQL", "Данные о пользователях")
+}
+
+' ================= SELLER DOMAIN =================
+Container_Boundary(seller_boundary, "Seller Domain") {
+    Container(seller, "Seller Service", "Python + Postgres", "Управление продавцами")
+    ContainerDb(sellerDB, "Seller DB", "PostgreSQL", "Данные о продавцах")
+}
+
+' ================= CATALOG DOMAIN =================
+Container_Boundary(catalog_boundary, "Catalog Domain") {
+    Container(catalog, "Catalog Service", "Python + Postgres/ES", "Товары, описание, категории")
+    ContainerDb(catalogDB, "Catalog DB", "PostgreSQL", "Данные о товарах")
+}
+
+' ================= CART DOMAIN =================
+Container_Boundary(cart_boundary, "Cart Domain") {
+    Container(cart, "Cart Service", "Python + Redis", "Корзина пользователя, временное хранилище")
+    ContainerDb(cartDB, "Cart DB", "Redis", "Данные о корзине")
+}
+
+' ================= ORDER DOMAIN =================
+Container_Boundary(order_boundary, "Order Domain") {
+    Container(order, "Order Service", "Python + Postgres", "Создание заказа, оркестрация")
+    ContainerDb(orderDB, "Order DB", "PostgreSQL", "Данные о заказах")
+}
+
+' ================= PAYMENT DOMAIN =================
+Container_Boundary(payment_boundary, "Payment Domain") {
+    Container(payment, "Payment Service", "Python + Postgres", "Интеграция с PSP, обработка платежей")
+    ContainerDb(paymentDB, "Payment DB", "PostgreSQL", "Данные о платежах")
+}
+
+' ================= INVENTORY DOMAIN =================
+Container_Boundary(inventory_boundary, "Inventory Domain") {
+    Container(inventory, "Inventory Service", "Python + Postgres", "Остатки, резервирование товаров")
+    ContainerDb(inventoryDB, "Inventory DB", "PostgreSQL", "Складские данные")
+}
+
+' ================= SHIPPING DOMAIN =================
+Container_Boundary(shipping_boundary, "Shipping Domain") {
+    Container(shipping, "Shipping Service", "Python", "Интеграция со службой доставки, трекинг")
+    ContainerDb(shippingDB, "Shipping DB", "PostgreSQL", "Данные о доставках")
+}
+
+' ================= NOTIFICATION DOMAIN =================
+Container_Boundary(notification_boundary, "Notification Domain") {
+    Container(notification, "Notification Service", "Python", "Отправка push/email")
+    ContainerDb(notificationDB, "Notification DB", "PostgreSQL", "Данные об уведомлениях")
+}
+
+' ================= REVIEWS DOMAIN =================
+Container_Boundary(reviews_boundary, "Reviews Domain") {
+    Container(reviews, "Reviews Service", "Python + Postgres", "Отзывы на товары")
+    ContainerDb(reviewsDB, "Reviews DB", "PostgreSQL", "Отзывы")
+}
+
+' ================= RELATIONS =================
+
+Rel(mobile, api, "HTTP/REST")
+
+Rel(api, auth, "JWT auth / user ops")
+Rel(api, catalog, "Просмотр каталога")
+Rel(api, reviews, "Просмотр отзывов")
+Rel(api, cart, "Работа с корзиной")
+Rel(api, order, "Оформление заказа")
+Rel(api, seller, "Управление продавцами")
+
+' ========== Event Streaming ==========
+' Publishers
+Rel(order, kafka, "OrderCreated / OrderConfirmed / OrderCancelled")
+Rel(payment, kafka, "PaymentSucceeded / PaymentFailed")
+Rel(inventory, kafka, "InventoryReserved / InventoryReleased / InventoryReservationFailed")
+Rel(shipping, kafka, "ShipmentStatusUpdated")
+Rel(notification, kafka, "NotificationSent")
+Rel(catalog, kafka, "ProductUpdated")
+Rel(reviews, kafka, "ReviewCreated")
+
+' Subscribers
+Rel(kafka, order, "Order events")
+Rel(kafka, payment, "Payment events")
+Rel(kafka, inventory, "Inventory events")
+Rel(kafka, shipping, "Shipment events")
+Rel(kafka, notification, "Send notifications")
+Rel(kafka, seller, "Seller-related events")
+
+' Database connections
+Rel(auth, authDB, "SQL")
+Rel(seller, sellerDB, "SQL")
+Rel(catalog, catalogDB, "SQL")
+Rel(cart, cartDB, "SQL")
+Rel(order, orderDB, "SQL")
+Rel(payment, paymentDB, "SQL")
+Rel(inventory, inventoryDB, "SQL")
+Rel(shipping, shippingDB, "SQL")
+Rel(notification, notificationDB, "SQL")
+Rel(reviews, reviewsDB, "SQL")
+
+@enduml

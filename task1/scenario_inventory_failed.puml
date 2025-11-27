@@ -1,0 +1,28 @@
+@startuml
+title Saga (choreography) — резерв не выполнен
+
+participant Mobile
+participant API
+participant OrderService
+participant Kafka
+participant InventoryService as Inventory
+participant NotificationService as Notification
+
+== Сценарий B: резерв не выполнен ==
+Mobile -> API : Checkout(payload)
+API -> OrderService : CreateOrder(payload)
+OrderService -> Kafka : OrderCreated
+
+Kafka -> Inventory : OrderCreated
+Inventory -> Inventory : check stock & try reserve
+Inventory -> Kafka : InventoryReservationFailed { order_id, reason }
+
+Kafka -> OrderService : InventoryReservationFailed
+OrderService -> Kafka : OrderCancelled { order_id, reason: "OutOfStock" }
+
+Kafka -> Notification : OrderCancelled
+Notification -> Kafka : NotificationSent { order_id, channel }
+
+note right: Клиент увидит ошибку и статус "Отменён".
+
+@enduml
